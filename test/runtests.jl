@@ -1,6 +1,2 @@
-using TestFunctionRunner
-using Test
-
-@testset "TestFunctionRunner.jl" begin
-    # Write your tests here.
-end
+include("load.jl")
+TestFunctionRunnerTests.runtests()

@@ -1,10 +1,20 @@
 baremodule TestFunctionRunner
 
+function run end
+macro run end
+
 module Internal
 
+import ..TestFunctionRunner: @run
 using ..TestFunctionRunner: TestFunctionRunner
 
-include("internal.jl")
+import LoadAllPackages
+using Distributed: @everywhere, nprocs
+using Pkg: TOML
+using Test: @testset
+
+include("utils.jl")
+include("core.jl")
 
 end  # module Internal
 
