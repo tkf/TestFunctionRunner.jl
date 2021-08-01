@@ -20,6 +20,13 @@ using ...Utils: @defmock
 end  # module TestNested3
 end  # module TestNested2
 
+module TestShouldTest
+using ..Utils: @defmock
+should_test_module() =
+    lowercase(get(ENV, "$(@__MODULE__).should_test_module", "true")) == "true"
+@defmock test
+end  # module TestShouldTest
+
 module NotATestModule
 test() = error("this should not be executed")
 end  # module NotATestModule

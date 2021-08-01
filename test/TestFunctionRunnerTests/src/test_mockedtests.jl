@@ -34,11 +34,22 @@ function test_runtests_fail()
     @test runtests_process(SCRIPT; env = env) ⊜ false
 end
 
+function test_should_test_module()
+    env = cleanenv()
+    env["SampleMockedTests.TestShouldTest.test"] = "false"
+    @test runtests_process(SCRIPT; env = env) ⊜ false
+    env["SampleMockedTests.TestShouldTest.should_test_module"] = "false"
+    @test runtests_process(SCRIPT; env = env) ⊜ true
+end
+
 function test_discovery()
     @test test_functions(SampleMockedTests) ==
           [SampleMockedTests.test, SampleMockedTests.test_2]
-    @test test_modules(SampleMockedTests) ==
-          [SampleMockedTests.TestNested, SampleMockedTests.TestNested2]
+    @test test_modules(SampleMockedTests) == [
+        SampleMockedTests.TestNested,
+        SampleMockedTests.TestNested2,
+        SampleMockedTests.TestShouldTest,
+    ]
 end
 
 end  # module

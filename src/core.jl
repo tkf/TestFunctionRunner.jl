@@ -90,7 +90,17 @@ function prepare_local(m::Module)
     LoadAllPackages.loadall(projectfile(m))
 end
 
+function should_test(m::Module)
+    f = try
+        m.should_test_module
+    catch
+        return true
+    end
+    return f()::Bool
+end
+
 function runtests(m::Module; recursive::Bool = true)
+    should_test(m) || return
     @debug "Testing module: `$m`"
     @testset "$f" for f in test_functions(m)
         @debug "Testing function: `$m.$f`"
