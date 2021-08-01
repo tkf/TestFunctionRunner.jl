@@ -3,9 +3,8 @@ module TestMockedTests
 using Test
 using TestFunctionRunner.Internal: test_functions, test_modules
 
+using ..Samples: SampleMockedTests
 using ..Utils: runtests_process, ⊜
-
-include("../../samples/mockedtests/SampleMockedTests/src/SampleMockedTests.jl")
 
 const SCRIPT = joinpath(@__DIR__, "../../samples/mockedtests/runtests.jl")
 
