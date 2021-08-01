@@ -9,6 +9,7 @@ import ..TestFunctionRunner: @run
 using ..TestFunctionRunner: TestFunctionRunner
 
 import LoadAllPackages
+using Base: PkgId
 using Distributed: @everywhere, nprocs
 using Pkg: TOML
 using Test: @testset
