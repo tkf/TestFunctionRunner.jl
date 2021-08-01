@@ -1,5 +1,6 @@
 """
     TestFunctionRunner.run(module::Module)
+    TestFunctionRunner.run(modules::AbstractArray)
 
 Run tests defined in a `module`.
 
@@ -8,6 +9,8 @@ recursively.  Test functions are nullary functions named `test` or nullary
 functions whose name start with `test_`.  Test modules are the sub-modules
 whose name starts with "Test" followed by a capital letter.
 """
+TestFunctionRunner.run
+
 function TestFunctionRunner.run(m::Module; prepare_distributed::Bool = true, kwargs...)
     with_project(m) do
         if prepare_distributed
@@ -19,6 +22,12 @@ function TestFunctionRunner.run(m::Module; prepare_distributed::Bool = true, kwa
             runtests(m; kwargs...)
         end
         Success(testset)
+    end
+end
+
+function TestFunctionRunner.run(modules::AbstractArray; kwargs...)
+    for m in modules
+        TestFunctionRunner.run(m::Module; kwargs...)
     end
 end
 

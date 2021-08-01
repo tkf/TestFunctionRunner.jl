@@ -2,6 +2,11 @@ module TestFunctionRunnerTests
 
 using Test
 
+module Samples
+include("../../samples/simplepass/SampleSimplePass/src/SampleSimplePass.jl")
+include("../../samples/mockedtests/SampleMockedTests/src/SampleMockedTests.jl")
+end  # module Samples
+
 include("utils.jl")
 using TestFunctionRunner.Internal: isnothing
 
