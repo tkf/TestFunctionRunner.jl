@@ -162,7 +162,7 @@ macro run(options...)
 end
 
 function assignment_as_kw(ex)
-    if isexpr(ex, :(=), 2)
+    if Meta.isexpr(ex, :(=), 2)
         return Expr(:kw, ex.args...)
     end
     error("a key-value pair (`k = v`) is expected; got: $ex")
