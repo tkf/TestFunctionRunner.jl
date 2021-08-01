@@ -1,0 +1,7 @@
+name = "SamplePaths"
+uuid = "9abb656f-2068-4056-9d9a-43ac984aec47"
+authors = ["Takafumi Arakaki <aka.tkf@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+SampleSimpleFail = "8fdf4988-d8f3-4a0d-b25c-be4c076f61a4"
