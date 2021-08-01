@@ -1,6 +1,6 @@
 """
     TestFunctionRunner.run(module::Module)
-    TestFunctionRunner.run(modules::AbstractArray)
+    TestFunctionRunner.run(modules::AbstractVector)
 
 Run tests defined in a `module`.
 
@@ -25,7 +25,7 @@ function TestFunctionRunner.run(m::Module; prepare_distributed::Bool = true, kwa
     end
 end
 
-function TestFunctionRunner.run(modules::AbstractArray; kwargs...)
+function TestFunctionRunner.run(modules::AbstractVector; kwargs...)
     for m in modules
         TestFunctionRunner.run(m::Module; kwargs...)
     end
