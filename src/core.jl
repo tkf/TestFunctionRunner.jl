@@ -159,11 +159,17 @@ end
 
 """
     TestFunctionRunner.@run()
-    TestFunctionRunner.@run(paths = [...])
 
 Run tests defined in the package `@__DIR__/\$TestPackage/src/\$TestPackage.jl`.
 
-Optionally add paths to the load path using keyword argument `paths`.
+# Keyword Arguments
+
+- `paths::AbstractVector{<:AbstractString}`: Additional load paths. Relative
+  paths are resolved with respect to the parent direcotry of the current file.
+  Example: `TestFunctionRunner.@run(paths = ["../benchmark/MyBenchmarks/"])`.
+
+- `packages::AbstractVector{<:AbstractString}`: Specify packages to be tested by
+  relative paths.
 """
 macro run(options...)
     kwargs = map(assignment_as_kw, options)
@@ -180,18 +186,28 @@ end
 function at_run_impl(
     __source__::LineNumberNode,
     __module__::Module;
-    paths::AbstractVector{String} = String[],
+    paths::AbstractVector{<:AbstractString} = String[],
+    packages::Union{AbstractVector{<:AbstractString}, Nothing} = nothing,
     kwargs...,
 )
     testdir = dirname(string(__source__.file))
-    paths = collect(String, paths)
-    m = load_test_package(testdir, paths)
+    paths = joinpath.(testdir, String.(paths))
+    if packages === nothing
+        pkgid, project = find_test_package(testdir)
+        pushfirst!(paths, project)
+        m = load_test_package(pkgid, paths)
+    else
+        m = map(packages) do pkgpath
+            local project = joinpath(testdir, pkgpath)
+            local pkgid = pkgid_from_project_path(project)
+            load_test_package(pkgid, [project; paths])
+        end
+    end
     Base.invokelatest(TestFunctionRunner.run, m; kwargs...)
 end
 
-function load_test_package(testdir::AbstractString, paths::Vector{String})::Module
-    pkgid, project = find_test_package(testdir)
-    missing_paths = setdiff!(map(abspath, [project; joinpath.(testdir, paths)]), LOAD_PATH)
+function load_test_package(pkgid::PkgId, paths::Vector{String})::Module
+    missing_paths = setdiff!(map(abspath, paths), LOAD_PATH)
     try
         return Base.require(pkgid)
     catch
@@ -218,7 +234,7 @@ function find_test_package(dir::AbstractString)
         uuid === nothing && continue
         isfile(subdir, "src", name * ".jl") || continue
 
-        pkgid = Base.PkgId(Base.UUID(uuid), name)
+        pkgid = PkgId(Base.UUID(uuid), name)
         push!(projects, (pkgid, path))
     end
     if isempty(projects)
@@ -227,6 +243,18 @@ function find_test_package(dir::AbstractString)
         error("multiple packages found at: $dir")
     end
     return projects[1]
+end
+
+function pkgid_from_project_path(path)
+    if isdir(path)
+        project = find_project_file(path)
+    else
+        project = path
+    end
+    toml = TOML.parsefile(project)
+    name = toml["name"]::String
+    uuid = toml["uuid"]::String
+    return PkgId(Base.UUID(uuid), name)
 end
 
 #=

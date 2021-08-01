@@ -1,0 +1,7 @@
+name = "SampleMultiplePackage2"
+uuid = "68dff80f-e50b-41d4-ad3c-54d433a60e6f"
+authors = ["Takafumi Arakaki <aka.tkf@gmail.com> and contributors"]
+version = "0.0.1"
+
+[compat]
+julia = "1"
