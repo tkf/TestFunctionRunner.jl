@@ -108,16 +108,41 @@ function should_test(m::Module)
     return f()::Bool
 end
 
+function run_before_test_module_hook(m::Module)
+    f = try
+        m.before_test_module
+    catch
+        return
+    end
+    f()
+    return
+end
+
+function run_after_test_module_hook(m::Module)
+    f = try
+        m.after_test_module
+    catch
+        return
+    end
+    f()
+    return
+end
+
 function runtests(m::Module; recursive::Bool = true)
     should_test(m) || return
-    @debug "Testing module: `$m`"
-    @testset "$f" for f in test_functions(m)
-        @debug "Testing function: `$m.$f`"
-        f()
-    end
-    recursive || return
-    @testset "$(nameof(sub))" for sub in test_modules(m)
-        runtests(sub)
+    run_before_test_module_hook(m)
+    try
+        @debug "Testing module: `$m`"
+        @testset "$f" for f in test_functions(m)
+            @debug "Testing function: `$m.$f`"
+            f()
+        end
+        recursive || return
+        @testset "$(nameof(sub))" for sub in test_modules(m)
+            runtests(sub)
+        end
+    finally
+        run_after_test_module_hook(m)
     end
 end
 

@@ -8,6 +8,7 @@ include("../../samples/mockedtests/SampleMockedTests/src/SampleMockedTests.jl")
 end  # module Samples
 
 include("utils.jl")
+include("xfails.jl")
 using TestFunctionRunner.Internal: isnothing
 
 function include_tests(m = @__MODULE__, dir = @__DIR__)
