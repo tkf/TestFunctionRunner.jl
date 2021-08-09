@@ -20,7 +20,7 @@ function cleanenv()
 end
 
 function test_runtests_pass()
-    if VERSION < v"1.2"
+    if VERSION < v"1.1"
         @test_broken runtests_process(SCRIPT; env = cleanenv()) ⊜ true
         return
     end
@@ -34,14 +34,14 @@ function test_runtests_fail()
 end
 
 function test_should_test_module()
-    if VERSION < v"1.2"
-        @test_broken "Broken on Julia < 1.2" === true
-        return
-    end
     env = cleanenv()
     env["SampleMockedTests.TestShouldTest.test"] = "false"
     @test runtests_process(SCRIPT; env = env) ⊜ false
     env["SampleMockedTests.TestShouldTest.should_test_module"] = "false"
+    if VERSION < v"1.1"
+        @test_broken runtests_process(SCRIPT; env = env) ⊜ true
+        return
+    end
     @test runtests_process(SCRIPT; env = env) ⊜ true
 end
 
