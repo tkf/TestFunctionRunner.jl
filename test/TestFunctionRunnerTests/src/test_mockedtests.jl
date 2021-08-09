@@ -34,6 +34,10 @@ function test_runtests_fail()
 end
 
 function test_should_test_module()
+    if VERSION < v"1.2"
+        @test_broken "Broken on Julia < 1.2" === true
+        return
+    end
     env = cleanenv()
     env["SampleMockedTests.TestShouldTest.test"] = "false"
     @test runtests_process(SCRIPT; env = env) ⊜ false
