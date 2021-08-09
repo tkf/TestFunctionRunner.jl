@@ -128,18 +128,33 @@ function run_after_test_module_hook(m::Module)
     return
 end
 
+function with_module_context(f, m::Module)
+    ctx = try
+        m.module_context
+    catch
+        nothing
+    end
+    if ctx === nothing
+        return f()
+    else
+        return ctx(f)
+    end
+end
+
 function runtests(m::Module; recursive::Bool = true)
     should_test(m) || return
     run_before_test_module_hook(m)
     try
-        @debug "Testing module: `$m`"
-        @testset "$f" for f in test_functions(m)
-            @debug "Testing function: `$m.$f`"
-            f()
-        end
-        recursive || return
-        @testset "$(nameof(sub))" for sub in test_modules(m)
-            runtests(sub)
+        with_module_context(m) do
+            @debug "Testing module: `$m`"
+            @testset "$f" for f in test_functions(m)
+                @debug "Testing function: `$m.$f`"
+                f()
+            end
+            recursive || return
+            @testset "$(nameof(sub))" for sub in test_modules(m)
+                runtests(sub)
+            end
         end
     finally
         run_after_test_module_hook(m)
