@@ -45,10 +45,17 @@ function test_should_test_module()
     @test runtests_process(SCRIPT; env = env) ⊜ true
 end
 
+function test_module_context()
+    env = cleanenv()
+    env["SampleMockedTests.TestModuleContext.use_module_context"] = "false"
+    @test runtests_process(SCRIPT; env = env) ⊜ false
+end
+
 function test_discovery()
     @test test_functions(SampleMockedTests) ==
           [SampleMockedTests.test, SampleMockedTests.test_2]
     @test test_modules(SampleMockedTests) == [
+        SampleMockedTests.TestModuleContext,
         SampleMockedTests.TestNested,
         SampleMockedTests.TestNested2,
         SampleMockedTests.TestShouldTest,

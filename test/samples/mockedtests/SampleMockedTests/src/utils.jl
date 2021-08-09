@@ -12,4 +12,16 @@ function mock(__module__::Module, name::Symbol)
     @test lowercase(get(ENV, "$__module__.$name", "true")) == "true"
 end
 
+macro getbool(key, default = "true")
+    m = @__MODULE__
+    esc(:($lowercase($m.@getstr($key, $default)) == "true"))
+end
+
+macro getstr(key, default)
+    esc(:($_getstr($(QuoteNode(__module__)), $key, $default)))
+end
+
+_getstr(__module__::Module, key::AbstractString, default) =
+    get(ENV, "$__module__.$key", default)
+
 end  # module
