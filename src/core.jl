@@ -11,7 +11,17 @@ whose name starts with "Test" followed by a capital letter.
 """
 TestFunctionRunner.run
 
-function TestFunctionRunner.run(m::Module; prepare_distributed::Bool = true, kwargs...)
+function TestFunctionRunner.run(
+    m::Module;
+    prepare_distributed::Bool = true,
+    timeout::Union{Nothing,Real} = default_global_timeout(),
+    kwargs...,
+)
+    options = (; timeout = timeout, kwargs...)
+    @debug(
+        "`TestFunctionRunner.run`",
+        options = (; prepare_distributed = prepare_distributed, options...)
+    )
     with_project(m) do
         if prepare_distributed
             load_everywhere(m)
@@ -19,7 +29,7 @@ function TestFunctionRunner.run(m::Module; prepare_distributed::Bool = true, kwa
             prepare_local(m)
         end
         testset = @testset "$(nameof(m))" begin
-            runtests(m; kwargs...)
+            runtests(m; options...)
         end
         Success(testset)
     end
@@ -29,6 +39,12 @@ function TestFunctionRunner.run(modules::AbstractVector; kwargs...)
     for m in modules
         TestFunctionRunner.run(m::Module; kwargs...)
     end
+end
+
+function default_global_timeout()
+    timeout = get(ENV, "TEST_FUNCTION_RUNNER_JL_TIMEOUT", nothing)
+    timeout === nothing && return timeout
+    return parse(Float64, timeout)
 end
 
 struct Success
@@ -141,19 +157,38 @@ function with_module_context(f, m::Module)
     end
 end
 
-function runtests(m::Module; recursive::Bool = true)
+default_timeout_of(@nospecialize(_)) = nothing
+
+function get_timeout_of(m::Module)
+    try
+        return m.timeout_of
+    catch
+        return default_timeout_of
+    end
+end
+
+function runtests(m::Module; recursive::Bool = true, timeout::Union{Nothing,Real} = nothing)
     should_test(m) || return
+    timeout === nothing ||
+        timeout > 0 ||
+        error("`timeout` should be positive; got: $timeout")
+    timeout_of = get_timeout_of(m)
     run_before_test_module_hook(m)
     try
         with_module_context(m) do
             @debug "Testing module: `$m`"
             @testset "$f" for f in test_functions(m)
                 @debug "Testing function: `$m.$f`"
-                f()
+                tout = something(timeout_of(f), timeout, Some(nothing))
+                if tout === nothing
+                    f()
+                else
+                    Terminators.withtimeout(f, tout)
+                end
             end
             recursive || return
             @testset "$(nameof(sub))" for sub in test_modules(m)
-                runtests(sub)
+                runtests(sub; recursive = recursive, timeout = timeout)
             end
         end
     finally
@@ -227,7 +262,7 @@ function at_run_impl(
     __source__::LineNumberNode,
     __module__::Module;
     paths::AbstractVector{<:AbstractString} = String[],
-    packages::Union{AbstractVector{<:AbstractString}, Nothing} = nothing,
+    packages::Union{AbstractVector{<:AbstractString},Nothing} = nothing,
     kwargs...,
 )
     testdir = dirname(string(__source__.file))

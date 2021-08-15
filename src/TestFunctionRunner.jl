@@ -9,6 +9,7 @@ import ..TestFunctionRunner: @run
 using ..TestFunctionRunner: TestFunctionRunner
 
 import LoadAllPackages
+import Terminators
 using Base: PkgId
 using Distributed: @everywhere, nprocs
 using Pkg: TOML
