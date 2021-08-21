@@ -178,12 +178,13 @@ function runtests(m::Module; recursive::Bool = true, timeout::Union{Nothing,Real
         with_module_context(m) do
             @debug "Testing module: `$m`"
             @testset "$f" for f in test_functions(m)
-                @debug "Testing function: `$m.$f`"
+                label = "$m.$f"
+                @debug "Testing function: `$label`"
                 tout = something(timeout_of(f), timeout, Some(nothing))
                 if tout === nothing
                     f()
                 else
-                    Terminators.withtimeout(f, tout)
+                    Terminators.withtimeout(f, tout; label = label)
                 end
             end
             recursive || return
