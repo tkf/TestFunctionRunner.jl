@@ -52,7 +52,8 @@ function default_global_timeout()
 end
 
 function default_fastfail()
-    str = @something(get(ENV, "TEST_FUNCTION_RUNNER_JL_FASTFAIL", nothing), return false)
+    str = get(ENV, "TEST_FUNCTION_RUNNER_JL_FASTFAIL", nothing)
+    str === nothing && return false
     return lowercase(str) in ("true", "yes", "1")
 end
 
