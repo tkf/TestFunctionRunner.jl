@@ -11,25 +11,29 @@ whose name starts with "Test" followed by a capital letter.
 """
 TestFunctionRunner.run
 
-function TestFunctionRunner.run(
-    m::Module;
+function _run_options(;
     prepare_distributed::Bool = true,
     timeout::Union{Nothing,Real} = default_global_timeout(),
+    failfast::Bool = default_fastfail(),
     kwargs...,
 )
-    options = (; timeout = timeout, kwargs...)
-    @debug(
-        "`TestFunctionRunner.run`",
-        options = (; prepare_distributed = prepare_distributed, options...)
-    )
+    runtests_options = (; timeout = timeout, failfast = failfast, kwargs...)
+    return (prepare_distributed, failfast, runtests_options)
+end
+
+function TestFunctionRunner.run(m::Module; kwargs...)
+    (prepare_distributed, failfast, runtests_options) = _run_options(; kwargs...)
+    @debug "`TestFunctionRunner.run`" options = sort!(collect(kwargs))
     with_project(m) do
         if prepare_distributed
             load_everywhere(m)
         else
             prepare_local(m)
         end
-        testset = @testset "$(nameof(m))" begin
-            runtests(m; options...)
+        testset = testset_iter([m]; failfast = failfast) do m
+            "$(nameof(m))" => function ()
+                runtests(m; runtests_options...)
+            end
         end
         Success(testset)
     end
@@ -45,6 +49,12 @@ function default_global_timeout()
     timeout = get(ENV, "TEST_FUNCTION_RUNNER_JL_TIMEOUT", nothing)
     timeout === nothing && return timeout
     return parse(Float64, timeout)
+end
+
+function default_fastfail()
+    str = get(ENV, "TEST_FUNCTION_RUNNER_JL_FASTFAIL", nothing)
+    str === nothing && return false
+    return lowercase(str) in ("true", "yes", "1")
 end
 
 struct Success
@@ -167,7 +177,25 @@ function get_timeout_of(m::Module)
     end
 end
 
-function runtests(m::Module; recursive::Bool = true, timeout::Union{Nothing,Real} = nothing)
+function testset_iter(f, iter; failfast::Bool)
+    tests = Iterators.map(f, iter)
+    if failfast
+        for (_label, test) in tests
+            test()
+        end
+    else
+        @testset "$label" for (label, test) in tests
+            test()
+        end
+    end
+end
+
+function runtests(
+    m::Module;
+    recursive::Bool = true,
+    timeout::Union{Nothing,Real} = nothing,
+    failfast::Bool = false,
+)
     should_test(m) || return
     timeout === nothing ||
         timeout > 0 ||
@@ -177,19 +205,23 @@ function runtests(m::Module; recursive::Bool = true, timeout::Union{Nothing,Real
     try
         with_module_context(m) do
             @debug "Testing module: `$m`"
-            @testset "$f" for f in test_functions(m)
-                label = "$m.$f"
-                @debug "Testing function: `$label`"
-                tout = something(timeout_of(f), timeout, Some(nothing))
-                if tout === nothing
-                    f()
-                else
-                    Terminators.withtimeout(f, tout; label = label)
+            testset_iter(test_functions(m); failfast = failfast) do f
+                "$f" => function ()
+                    label = "$m.$f"
+                    @debug "Testing function: `$label`"
+                    tout = something(timeout_of(f), timeout, Some(nothing))
+                    if tout === nothing
+                        f()
+                    else
+                        Terminators.withtimeout(f, tout; label = label)
+                    end
                 end
             end
             recursive || return
-            @testset "$(nameof(sub))" for sub in test_modules(m)
-                runtests(sub; recursive = recursive, timeout = timeout)
+            testset_iter(test_modules(m); failfast = failfast) do sub
+                "$(nameof(sub))" => function ()
+                    runtests(sub; recursive = recursive, timeout = timeout, failfast = failfast)
+                end
             end
         end
     finally
