@@ -20,4 +20,6 @@ include("core.jl")
 
 end  # module Internal
 
+Internal.define_docstring()
+
 end  # baremodule TestFunctionRunner
