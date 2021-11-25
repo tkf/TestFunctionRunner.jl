@@ -296,6 +296,7 @@ function at_run_impl(
     __module__::Module;
     paths::AbstractVector{<:AbstractString} = String[],
     packages::Union{AbstractVector{<:AbstractString},Nothing} = nothing,
+    prepare_distributed::Bool = true,
     kwargs...,
 )
     testdir = dirname(string(__source__.file))
@@ -303,24 +304,36 @@ function at_run_impl(
     if packages === nothing
         pkgid, project = find_test_package(testdir)
         pushfirst!(paths, project)
-        m = load_test_package(pkgid, paths)
+        m = load_test_package(pkgid, paths, prepare_distributed)
     else
         m = map(packages) do pkgpath
             local project = joinpath(testdir, pkgpath)
             local pkgid = pkgid_from_project_path(project)
-            load_test_package(pkgid, [project; paths])
+            load_test_package(pkgid, [project; paths], prepare_distributed)
         end
     end
-    Base.invokelatest(TestFunctionRunner.run, m; kwargs...)
+    Base.invokelatest(
+        TestFunctionRunner.run,
+        m;
+        prepare_distributed = prepare_distributed,
+        kwargs...,
+    )
 end
 
-function load_test_package(pkgid::PkgId, paths::Vector{String})::Module
+function load_test_package(
+    pkgid::PkgId,
+    paths::Vector{String},
+    prepare_distributed::Bool,
+)::Module
     missing_paths = setdiff!(map(abspath, paths), LOAD_PATH)
     try
         return Base.require(pkgid)
     catch
         isempty(missing_paths) && rethrow()
         append!(LOAD_PATH, missing_paths)
+    end
+    if prepare_distributed
+        @everywhere append!(empty!(LOAD_PATH), $(copy(LOAD_PATH)))
     end
     @debug "Try loading `$pkgid` again after `LOAD_PATH` hack..." LOAD_PATH
     return Base.require(pkgid)
